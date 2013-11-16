@@ -24,25 +24,28 @@ class AboutMessagePassing < Neo::Koan
     mc = MessageCatcher.new
 
     assert mc.send("caught?")
-    assert mc.send("caught" + __ )    # What do you need to add to the first string?
-    assert mc.send("CAUGHT?".____ )      # What would you need to do to the string?
+    assert mc.send("caught" + '?' )    # What do you need to add to the first string?
+    assert mc.send("CAUGHT?".downcase )      # What would you need to do to the string?
   end
 
   def test_send_with_underscores_will_also_send_messages
     mc = MessageCatcher.new
 
-    assert_equal __, mc.__send__(:caught?)
+    assert_equal true, mc.__send__(:caught?)
 
     # THINK ABOUT IT:
     #
     # Why does Ruby provide both send and __send__ ?
+    #
+    # Answer: it's because some classes may want to define a method of their
+    # own called send, so to be safe, Ruby provides __send__.
   end
 
   def test_classes_can_be_asked_if_they_know_how_to_respond
     mc = MessageCatcher.new
 
-    assert_equal __, mc.respond_to?(:caught?)
-    assert_equal __, mc.respond_to?(:does_not_exist)
+    assert_equal true, mc.respond_to?(:caught?)
+    assert_equal false, mc.respond_to?(:does_not_exist)
   end
 
   # ------------------------------------------------------------------
@@ -56,11 +59,14 @@ class AboutMessagePassing < Neo::Koan
   def test_sending_a_message_with_arguments
     mc = MessageCatcher.new
 
-    assert_equal __, mc.add_a_payload
-    assert_equal __, mc.send(:add_a_payload)
+    # First thought was that this would return nil, but the splat operator
+    # gathers up any number of arguments into an array, so on second
+    # consideration, it makes sense that sending 0 args would == []
+    assert_equal [], mc.add_a_payload
+    assert_equal [], mc.send(:add_a_payload)
 
-    assert_equal __, mc.add_a_payload(3, 4, nil, 6)
-    assert_equal __, mc.send(:add_a_payload, 3, 4, nil, 6)
+    assert_equal [3, 4, nil, 6], mc.add_a_payload(3, 4, nil, 6)
+    assert_equal [3, 4, nil, 6], mc.send(:add_a_payload, 3, 4, nil, 6)
   end
 
   # ------------------------------------------------------------------
@@ -71,7 +77,7 @@ class AboutMessagePassing < Neo::Koan
   def test_sending_undefined_messages_to_a_typical_object_results_in_errors
     typical = TypicalObject.new
 
-    exception = assert_raise(___) do
+    exception = assert_raise(NoMethodError) do
       typical.foobar
     end
     assert_match(/foobar/, exception.message)
@@ -80,7 +86,7 @@ class AboutMessagePassing < Neo::Koan
   def test_calling_method_missing_causes_the_no_method_error
     typical = TypicalObject.new
 
-    exception = assert_raise(___) do
+    exception = assert_raise(NoMethodError) do
       typical.method_missing(:foobar)
     end
     assert_match(/foobar/, exception.message)
@@ -101,6 +107,14 @@ class AboutMessagePassing < Neo::Koan
     #
     # Thanks.  We now return you to your regularly scheduled Ruby
     # Koans.
+    #
+    # Answer: calling #method_missing causes a NoMethodError because it throws
+    # that exception explicitly if an object doesn't support that message. You
+    # can redefine #method_missing to have it intercept certain messages. For
+    # example, in one exercise for the ESaaS/CS169.1x textbook, we added an
+    # #hours method to Fixnum, and then we used :method_missing to have it
+    # redirect any calls using the singular (e.g. 1.hour). Of course, we still
+    # forward calls to super if we do not match...
   end
 
   # ------------------------------------------------------------------
@@ -114,18 +128,22 @@ class AboutMessagePassing < Neo::Koan
   def test_all_messages_are_caught
     catcher = AllMessageCatcher.new
 
-    assert_equal __, catcher.foobar
-    assert_equal __, catcher.foobaz(1)
-    assert_equal __, catcher.sum(1,2,3,4,5,6)
+    assert_equal 'Someone called foobar with <>', catcher.foobar
+    assert_equal 'Someone called foobaz with <1>', catcher.foobaz(1)
+    assert_equal 'Someone called sum with <1, 2, 3, 4, 5, 6>', catcher.sum(1,2,3,4,5,6)
   end
 
+  # Whoa, unexpected! respond_to does not accept method_missing as a proper
+  # "response", and therefore any messages caught by method_missing without
+  # throwing an exception are not counted as responding to that message. Even
+  # when method_missing calls another method, it doesn't count.
   def test_catching_messages_makes_respond_to_lie
     catcher = AllMessageCatcher.new
 
     assert_nothing_raised do
       catcher.any_method
     end
-    assert_equal __, catcher.respond_to?(:any_method)
+    assert_equal false, catcher.respond_to?(:any_method)
   end
 
   # ------------------------------------------------------------------
@@ -143,14 +161,14 @@ class AboutMessagePassing < Neo::Koan
   def test_foo_method_are_caught
     catcher = WellBehavedFooCatcher.new
 
-    assert_equal __, catcher.foo_bar
-    assert_equal __, catcher.foo_baz
+    assert_equal 'Foo to you too', catcher.foo_bar
+    assert_equal 'Foo to you too', catcher.foo_baz
   end
 
   def test_non_foo_messages_are_treated_normally
     catcher = WellBehavedFooCatcher.new
 
-    assert_raise(___) do
+    assert_raise(NoMethodError) do
       catcher.normal_undefined_method
     end
   end
@@ -171,8 +189,8 @@ class AboutMessagePassing < Neo::Koan
   def test_explicitly_implementing_respond_to_lets_objects_tell_the_truth
     catcher = WellBehavedFooCatcher.new
 
-    assert_equal __, catcher.respond_to?(:foo_bar)
-    assert_equal __, catcher.respond_to?(:something_else)
+    assert_equal true, catcher.respond_to?(:foo_bar)
+    assert_equal false, catcher.respond_to?(:something_else)
   end
 
 end
