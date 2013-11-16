@@ -2,9 +2,15 @@ require File.expand_path(File.dirname(__FILE__) + '/neo')
 
 # Implement a DiceSet Class here:
 #
-# class DiceSet
-#   code ...
-# end
+class DiceSet
+  attr_reader :values
+
+  def roll(times)
+    @values = []
+    times.times { @values << Random.rand(1..6) }
+  end
+
+end
 
 class AboutDiceProject < Neo::Koan
   def test_can_create_a_dice_set
@@ -48,6 +54,10 @@ class AboutDiceProject < Neo::Koan
     # If the rolls are random, then it is possible (although not
     # likely) that two consecutive rolls are equal.  What would be a
     # better way to test this?
+    #
+    # Answer: You could also check the object_id of the array returned by
+    # values to verify that the class is generating a new array instance, in
+    # addition to checking that the arrays are equal.
   end
 
   def test_you_can_roll_different_numbers_of_dice
