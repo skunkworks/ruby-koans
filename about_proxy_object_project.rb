@@ -15,10 +15,40 @@ require File.expand_path(File.dirname(__FILE__) + '/neo')
 class Proxy
   def initialize(target_object)
     @object = target_object
-    # ADD MORE CODE HERE
+    @messages = {}
   end
 
-  # WRITE CODE HERE
+  def messages
+    @messages.keys
+  end
+
+  def called?(method_id)
+    @messages.keys.include?(method_id)
+  end
+
+  # Aww shit, look at me, doing fancy Ruby tricks to get it to return 0 if
+  # the @messages hash doesn't contain method_id as a key
+  def number_of_times_called(method_id)
+    @messages[method_id] || 0
+  end
+
+  # Based on tests in irb, I know the following:
+  #
+  # If an unknown method is invoked with no args, then inside method_missing,
+  # the args array is empty and not nil.
+  #
+  # If you want to pass a block variable as an implicit block to a method, you
+  # must use the unary ampersand (&)
+  def method_missing(method_id, *args, &block)
+    @messages[method_id] = @messages[method_id].nil? ?
+                           1 :
+                           @messages[method_id]+1
+    if args.empty?
+      @object.send(method_id, &block)
+    else
+      @object.send(method_id, *args, &block)
+    end
+  end
 end
 
 # The proxy object should pass the following Koan:
